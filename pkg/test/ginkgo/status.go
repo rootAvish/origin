@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"sort"
@@ -94,10 +96,11 @@ func (s *testStatus) Run(ctx context.Context, test *testCase) {
 
 	test.start = time.Now()
 	c := exec.Command(os.Args[0], "run-test", test.name)
+	http.Get(os.Getenv("TEST_CONTEXT_BASEURL") + "/setcontext?ctx=" + url.QueryEscape(test.name))
 	s.Fprintf(fmt.Sprintf("started: (%s) %q\n\n", "%d/%d/%d", test.name))
 	out, err := runWithTimeout(ctx, c, s.timeout)
 	test.end = time.Now()
-
+	http.Get(os.Getenv("TEST_CONTEXT_BASEURL") + "/endcontext?ctx=" + url.QueryEscape(test.name))
 	duration := test.end.Sub(test.start).Round(time.Second / 10)
 	if duration > time.Minute {
 		duration = duration.Round(time.Second)
