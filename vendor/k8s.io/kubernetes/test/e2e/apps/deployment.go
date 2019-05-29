@@ -26,7 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,9 +38,16 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	appsinternal "k8s.io/kubernetes/pkg/apis/apps"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
+	tracing "k8s.io/kubernetes/pkg/tracing"
 	"k8s.io/kubernetes/test/e2e/framework"
 	testutil "k8s.io/kubernetes/test/utils"
 	utilpointer "k8s.io/utils/pointer"
+
+	"context"
+	"runtime"
+
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 )
 
 const (
@@ -68,7 +75,16 @@ var _ = SIGDescribe("Deployment", func() {
 	})
 
 	It("deployment reaping should cascade to its replica sets and pods", func() {
-		testDeleteDeployment(f)
+		tracer, closer := tracing.Init("test-binary")
+		defer closer.Close()
+		opentracing.SetGlobalTracer(tracer)
+
+		span := tracer.StartSpan("deployment reaping should cascade to its replica sets and pods")
+		span.SetTag("trace-source", "test-binary")
+		defer span.Finish()
+
+		ctx := opentracing.ContextWithSpan(context.Background(), span)
+		testDeleteDeployment(f, ctx)
 	})
 	/*
 	  Testname: Deployment RollingUpdate
@@ -217,7 +233,17 @@ func stopDeployment(c clientset.Interface, ns, deploymentName string) {
 	}
 }
 
-func testDeleteDeployment(f *framework.Framework) {
+func testDeleteDeployment(f *framework.Framework, ctx context.Context) {
+	pc := make([]uintptr, 10) // at least 1 entry needed
+	runtime.Callers(2, pc)
+	fn := runtime.FuncForPC(pc[0])
+	span, ctx := opentracing.StartSpanFromContext(ctx, f.BaseName)
+
+	defer span.Finish()
+	span.LogFields(
+		log.String("event", "entered function"),
+		log.String("value", fn.Name()),
+	)
 	ns := f.Namespace.Name
 	c := f.ClientSet
 
