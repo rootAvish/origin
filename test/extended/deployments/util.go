@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -32,6 +33,8 @@ import (
 	"github.com/openshift/origin/pkg/apps/apiserver/registry/deploylog"
 	appsutil "github.com/openshift/origin/pkg/apps/util"
 	exutil "github.com/openshift/origin/test/extended/util"
+	opentracing "github.com/opentracing/opentracing-go"
+	log "github.com/opentracing/opentracing-go/log"
 )
 
 type updateConfigFunc func(d *appsv1.DeploymentConfig)
@@ -333,7 +336,17 @@ func deploymentImageTriggersResolved(expectTriggers int) func(dc *appsv1.Deploym
 	}
 }
 
-func deploymentInfo(oc *exutil.CLI, name string) (*appsv1.DeploymentConfig, []*corev1.ReplicationController, []corev1.Pod, error) {
+func deploymentInfo(oc *exutil.CLI, name string, ctx context.Context) (*appsv1.DeploymentConfig, []*corev1.ReplicationController, []corev1.Pod, error) {
+	pc := make([]uintptr, 10) // at least 1 entry needed
+	runtime.Callers(2, pc)
+	fn := runtime.FuncForPC(pc[0])
+	span, ctx := opentracing.StartSpanFromContext(ctx, fn.Name())
+
+	defer span.Finish()
+	span.LogFields(
+		log.String("event", "entered function"),
+		log.String("value", fn.Name()),
+	)
 	dc, err := oc.AppsClient().AppsV1().DeploymentConfigs(oc.Namespace()).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, nil, err
@@ -366,7 +379,7 @@ type deploymentConditionFunc func(dc *appsv1.DeploymentConfig, rcs []*corev1.Rep
 
 func waitForLatestCondition(oc *exutil.CLI, name string, timeout time.Duration, fn deploymentConditionFunc) error {
 	return wait.PollImmediate(200*time.Millisecond, timeout, func() (bool, error) {
-		dc, rcs, pods, err := deploymentInfo(oc, name)
+		dc, rcs, pods, err := deploymentInfo(oc, name, context.Background())
 		if err != nil {
 			return false, err
 		}
@@ -378,7 +391,7 @@ func waitForLatestCondition(oc *exutil.CLI, name string, timeout time.Duration, 
 }
 
 func waitForSyncedConfig(oc *exutil.CLI, name string, timeout time.Duration) error {
-	dc, rcs, pods, err := deploymentInfo(oc, name)
+	dc, rcs, pods, err := deploymentInfo(oc, name, context.Background())
 	if err != nil {
 		return err
 	}
@@ -553,7 +566,7 @@ func failureTrap(oc *exutil.CLI, name string, failed bool) {
 		return
 	}
 	e2e.Logf("\n%s\n", out)
-	_, rcs, pods, err := deploymentInfo(oc, name)
+	_, rcs, pods, err := deploymentInfo(oc, name, context.Background())
 	if err != nil {
 		e2e.Logf("Error getting deployment %s info: %v", name, err)
 		return

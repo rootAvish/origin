@@ -1269,7 +1269,7 @@ func TestBrowserSafeAuthorizer(t *testing.T) {
 			expectUnsafe: true,
 		},
 	} {
-		errProxy := tc.client.Get().AbsPath(tc.path...).Do().Error()
+		errProxy := tc.client.Get(nil).AbsPath(tc.path...).Do().Error()
 		if errProxy == nil || !kapierror.IsForbidden(errProxy) || tc.expectUnsafe != isUnsafeErr(errProxy) {
 			t.Errorf("%s: expected forbidden error on GET %s, got %#v (isForbidden=%v, expectUnsafe=%v, actualUnsafe=%v)",
 				tc.name, tc.path, errProxy, kapierror.IsForbidden(errProxy), tc.expectUnsafe, isUnsafeErr(errProxy))

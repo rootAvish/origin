@@ -17,6 +17,7 @@ limitations under the License.
 package rest
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"net/http"
@@ -46,7 +47,7 @@ type Interface interface {
 	Post() *Request
 	Put() *Request
 	Patch(pt types.PatchType) *Request
-	Get() *Request
+	Get(context.Context) *Request
 	Delete() *Request
 	APIVersion() schema.GroupVersion
 }
@@ -218,38 +219,38 @@ func createSerializers(config ContentConfig) (*Serializers, error) {
 // if err != nil { ... }
 // list, ok := resp.(*api.PodList)
 //
-func (c *RESTClient) Verb(verb string) *Request {
+func (c *RESTClient) Verb(verb string, ctx context.Context) *Request {
 	backoff := c.createBackoffMgr()
 
 	if c.Client == nil {
-		return NewRequest(nil, verb, c.base, c.versionedAPIPath, c.contentConfig, c.serializers, backoff, c.Throttle, 0)
+		return NewRequest(nil, verb, c.base, c.versionedAPIPath, c.contentConfig, c.serializers, backoff, c.Throttle, 0, ctx)
 	}
-	return NewRequest(c.Client, verb, c.base, c.versionedAPIPath, c.contentConfig, c.serializers, backoff, c.Throttle, c.Client.Timeout)
+	return NewRequest(c.Client, verb, c.base, c.versionedAPIPath, c.contentConfig, c.serializers, backoff, c.Throttle, c.Client.Timeout, ctx)
 }
 
 // Post begins a POST request. Short for c.Verb("POST").
 func (c *RESTClient) Post() *Request {
-	return c.Verb("POST")
+	return c.Verb("POST", nil)
 }
 
 // Put begins a PUT request. Short for c.Verb("PUT").
 func (c *RESTClient) Put() *Request {
-	return c.Verb("PUT")
+	return c.Verb("PUT", nil)
 }
 
 // Patch begins a PATCH request. Short for c.Verb("Patch").
 func (c *RESTClient) Patch(pt types.PatchType) *Request {
-	return c.Verb("PATCH").SetHeader("Content-Type", string(pt))
+	return c.Verb("PATCH", nil).SetHeader("Content-Type", string(pt))
 }
 
 // Get begins a GET request. Short for c.Verb("GET").
-func (c *RESTClient) Get() *Request {
-	return c.Verb("GET")
+func (c *RESTClient) Get(ctx context.Context) *Request {
+	return c.Verb("GET", ctx)
 }
 
 // Delete begins a DELETE request. Short for c.Verb("DELETE").
 func (c *RESTClient) Delete() *Request {
-	return c.Verb("DELETE")
+	return c.Verb("DELETE", nil)
 }
 
 // APIVersion returns the APIVersion this RESTClient is expected to use.

@@ -1,6 +1,7 @@
 package projects
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -21,6 +22,8 @@ import (
 	clientcfg "github.com/openshift/origin/pkg/client/config"
 	ocproject "github.com/openshift/origin/pkg/oc/cli/project"
 	cliconfig "github.com/openshift/origin/pkg/oc/lib/kubeconfig"
+	opentracing "github.com/opentracing/opentracing-go"
+	tracing "k8s.io/kubernetes/pkg/tracing"
 )
 
 type ProjectsOptions struct {
@@ -118,6 +121,15 @@ func (o *ProjectsOptions) Validate() error {
 
 // RunProjects lists all projects a user belongs to
 func (o ProjectsOptions) Run() error {
+	tracer, closer := tracing.Init("oc")
+	defer closer.Close()
+	opentracing.SetGlobalTracer(tracer)
+
+	span := tracer.StartSpan("status")
+	span.SetTag("trace-source", "oc project")
+	defer span.Finish()
+	ctx := opentracing.ContextWithSpan(context.Background(), span)
+
 	config := o.Config
 
 	var currentProject string
@@ -143,7 +155,7 @@ func (o ProjectsOptions) Run() error {
 	}
 
 	var msg string
-	projects, err := ocproject.GetProjects(client, o.KubeClient)
+	projects, err := ocproject.GetProjects(client, o.KubeClient, ctx)
 	if err == nil {
 		switch len(projects) {
 		case 0:

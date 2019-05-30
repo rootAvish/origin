@@ -25,6 +25,8 @@ import (
 	appsutil "github.com/openshift/origin/pkg/apps/util"
 	imageapi "github.com/openshift/origin/pkg/image/apis/image"
 	exutil "github.com/openshift/origin/test/extended/util"
+	opentracing "github.com/opentracing/opentracing-go"
+	tracing "k8s.io/kubernetes/pkg/tracing"
 )
 
 const deploymentRunTimeout = 5 * time.Minute
@@ -141,7 +143,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 				case n < 0.0:
 					// delete the deployer pod - disabled because it forces the system to wait for the sync loop
 					e2e.Logf("%02d: deleting one or more deployer pods", i)
-					_, rcs, pods, err := deploymentInfo(oc, "deployment-simple")
+					_, rcs, pods, err := deploymentInfo(oc, "deployment-simple", context.Background())
 					if err != nil {
 						e2e.Logf("%02d: unable to get deployment info: %v", i, err)
 						continue
@@ -195,12 +197,19 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 		})
 
 		g.It("should immediately start a new deployment", func() {
+			tracer, closer := tracing.Init("test-binary")
+			defer closer.Close()
+			opentracing.SetGlobalTracer(tracer)
 			dc, err := createDeploymentConfig(oc, simpleDeploymentFixture)
+			span := tracer.StartSpan("should immediately start a new deployment")
+			span.SetTag("trace-source", "test-binary")
+			defer span.Finish()
+			ctx := opentracing.ContextWithSpan(context.Background(), span)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By(fmt.Sprintf("by checking that the deployment config has the correct version"))
 			err = wait.PollImmediate(500*time.Millisecond, time.Minute, func() (bool, error) {
-				dc, _, _, err := deploymentInfo(oc, dc.Name)
+				dc, _, _, err := deploymentInfo(oc, dc.Name, ctx)
 				if err != nil {
 					return false, nil
 				}
@@ -213,7 +222,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 
 			g.By(fmt.Sprintf("by checking that the deployment config has the correct version"))
 			err = wait.PollImmediate(500*time.Millisecond, time.Minute, func() (bool, error) {
-				dc, _, _, err := deploymentInfo(oc, dc.Name)
+				dc, _, _, err := deploymentInfo(oc, dc.Name, ctx)
 				if err != nil {
 					return false, nil
 				}
@@ -223,7 +232,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 
 			g.By(fmt.Sprintf("by checking that the second deployment exists"))
 			err = wait.PollImmediate(500*time.Millisecond, time.Minute, func() (bool, error) {
-				_, rcs, _, err := deploymentInfo(oc, dcName)
+				_, rcs, _, err := deploymentInfo(oc, dcName, ctx)
 				if err != nil {
 					return false, nil
 				}
@@ -242,7 +251,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 
 			g.By(fmt.Sprintf("by checking that the first deployer was deleted and the second deployer exists"))
 			err = wait.PollImmediate(500*time.Millisecond, time.Minute, func() (bool, error) {
-				_, _, pods, err := deploymentInfo(oc, dcName)
+				_, _, pods, err := deploymentInfo(oc, dcName, ctx)
 				if err != nil {
 					return false, nil
 				}
@@ -773,7 +782,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(dc.Name).To(o.Equal(dcName))
 
-			_, rcs, _, err := deploymentInfo(oc, dcName)
+			_, rcs, _, err := deploymentInfo(oc, dcName, context.Background())
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if len(rcs) != 0 {
 				o.Expect(fmt.Errorf("expected no deployment, found %#v", rcs[0])).NotTo(o.HaveOccurred())
@@ -800,7 +809,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 			o.Expect(err).To(o.HaveOccurred())
 			o.Expect(out).To(o.ContainSubstring("cannot rollback a paused deployment config"))
 
-			_, rcs, _, err = deploymentInfo(oc, dcName)
+			_, rcs, _, err = deploymentInfo(oc, dcName, context.Background())
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if len(rcs) != 0 {
 				o.Expect(fmt.Errorf("expected no deployment, found %#v", rcs[0])).NotTo(o.HaveOccurred())
@@ -985,7 +994,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 				"the controller needs to have synced with the updated deployment configuration before checking that the revision history limits are being adhered to")
 			var pollErr error
 			err = wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
-				deploymentConfig, deployments, _, err := deploymentInfo(oc, "history-limit")
+				deploymentConfig, deployments, _, err := deploymentInfo(oc, "history-limit", context.Background())
 				if err != nil {
 					pollErr = err
 					return false, nil
@@ -1116,7 +1125,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 
 			g.By("verifying that the deployment config is bumped to the first version")
 			err = wait.PollImmediate(500*time.Millisecond, 30*time.Second, func() (bool, error) {
-				dc, _, _, err := deploymentInfo(oc, dcName)
+				dc, _, _, err := deploymentInfo(oc, dcName, context.Background())
 				if err != nil {
 					return false, nil
 				}
@@ -1130,7 +1139,7 @@ var _ = g.Describe("[Feature:DeploymentConfig] deploymentconfigs", func() {
 			g.By("verifying that the deployment config has the desired condition and reason")
 			var conditions []appsv1.DeploymentCondition
 			err = wait.PollImmediate(500*time.Millisecond, 30*time.Second, func() (bool, error) {
-				dc, _, _, err := deploymentInfo(oc, dcName)
+				dc, _, _, err := deploymentInfo(oc, dcName, context.Background())
 				if err != nil {
 					return false, nil
 				}

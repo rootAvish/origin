@@ -1,9 +1,11 @@
 package project
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -23,6 +25,8 @@ import (
 	oapi "github.com/openshift/origin/pkg/api"
 	clientcfg "github.com/openshift/origin/pkg/client/config"
 	cliconfig "github.com/openshift/origin/pkg/oc/lib/kubeconfig"
+	opentracing "github.com/opentracing/opentracing-go"
+	log "github.com/opentracing/opentracing-go/log"
 )
 
 type ProjectOptions struct {
@@ -225,7 +229,7 @@ func (o ProjectOptions) Run() error {
 						msg = fmt.Sprintf("A project named %q does not exist on %q.", argument, clientCfg.Host)
 					}
 
-					projects, err := GetProjects(client, kubeclient)
+					projects, err := GetProjects(client, kubeclient, nil)
 					if err == nil {
 						switch len(projects) {
 						case 0:
@@ -325,7 +329,20 @@ func ConfirmProjectAccess(currentProject string, projectClient projectv1client.P
 	return projectErr
 }
 
-func GetProjects(projectClient projectv1client.ProjectV1Interface, kClient corev1client.CoreV1Interface) ([]projectv1.Project, error) {
+func GetProjects(projectClient projectv1client.ProjectV1Interface, kClient corev1client.CoreV1Interface, ctx context.Context) ([]projectv1.Project, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	pc := make([]uintptr, 10) // at least 1 entry needed
+	runtime.Callers(2, pc)
+	fn := runtime.FuncForPC(pc[0])
+	span, ctx := opentracing.StartSpanFromContext(ctx, fn.Name())
+
+	defer span.Finish()
+	span.LogFields(
+		log.String("event", "entered function"),
+		log.String("value", fn.Name()),
+	)
 	projects, err := projectClient.Projects().List(metav1.ListOptions{})
 	if err == nil {
 		return projects.Items, nil

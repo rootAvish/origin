@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -42,7 +43,7 @@ type NamespaceInterface interface {
 	UpdateStatus(*v1.Namespace) (*v1.Namespace, error)
 	Delete(name string, options *metav1.DeleteOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.Namespace, error)
-	List(opts metav1.ListOptions) (*v1.NamespaceList, error)
+	List(opts metav1.ListOptions, ctx context.Context()) (*v1.NamespaceList, error)
 	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Namespace, err error)
 	NamespaceExpansion
@@ -73,7 +74,20 @@ func (c *namespaces) Get(name string, options metav1.GetOptions) (result *v1.Nam
 }
 
 // List takes label and field selectors, and returns the list of Namespaces that match those selectors.
-func (c *namespaces) List(opts metav1.ListOptions) (result *v1.NamespaceList, err error) {
+func (c *namespaces) List(opts metav1.ListOptions, ctx context.Context) (result *v1.NamespaceList, err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	pc := make([]uintptr, 10) // at least 1 entry needed
+	runtime.Callers(2, pc)
+	fn := runtime.FuncForPC(pc[0])
+	span, ctx := opentracing.StartSpanFromContext(ctx, fn.Name())
+
+	defer span.Finish()
+	span.LogFields(
+		log.String("event", "entered function"),
+		log.String("value", fn.Name()),
+	)
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
