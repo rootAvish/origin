@@ -19,7 +19,7 @@ import:
   repo:    https://github.com/openshift/kubernetes-apiserver.git
   version: origin-4.1-kubernetes-1.13.4
 - package: k8s.io/client-go
-  repo:    https://github.com/openshift/kubernetes-client-go.git
+  repo:    https://github.com/rootavish/kubernetes-client-go.git
   version: origin-4.1-kubernetes-1.13.4
 - package: k8s.io/cli-runtime
   repo:    https://github.com/openshift/kubernetes-cli-runtime.git

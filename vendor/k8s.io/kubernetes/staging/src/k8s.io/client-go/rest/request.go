@@ -44,6 +44,9 @@ import (
 	"k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/klog"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	"github.com/rootavish/tracing"
 )
 
 var (
@@ -558,6 +561,17 @@ func (r *Request) WatchWithSpecificDecoders(wrapperDecoderFn func(io.ReadCloser)
 
 	url := r.URL().String()
 	req, err := http.NewRequest(r.verb, url, r.body)
+	tracer, closer := tracing.Init("client-request")
+	defer closer.Close()
+	span := tracer.StartSpan("remote-log-span-watch")
+	ext.SpanKindRPCClient.Set(span)
+	ext.HTTPUrl.Set(span, url)
+	ext.HTTPMethod.Set(span, r.verb)
+	span.Tracer().Inject(
+		span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -635,6 +649,17 @@ func (r *Request) Stream() (io.ReadCloser, error) {
 	if r.ctx != nil {
 		req = req.WithContext(r.ctx)
 	}
+	tracer, closer := tracing.Init("client-request")
+	defer closer.Close()
+	span := tracer.StartSpan("remote-log-span-stream")
+	ext.SpanKindRPCClient.Set(span)
+	ext.HTTPUrl.Set(span, url)
+	ext.HTTPMethod.Set(span, r.verb)
+	span.Tracer().Inject(
+		span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
 	req.Header = r.headers
 	client := r.client
 	if client == nil {
@@ -706,6 +731,17 @@ func (r *Request) request(fn func(*http.Request, *http.Response)) error {
 	for {
 		url := r.URL().String()
 		req, err := http.NewRequest(r.verb, url, r.body)
+		tracer, closer := tracing.Init("client-request")
+		defer closer.Close()
+		span := tracer.StartSpan("remote-log-span-sync")
+		ext.SpanKindRPCClient.Set(span)
+		ext.HTTPUrl.Set(span, url)
+		ext.HTTPMethod.Set(span, r.verb)
+		span.Tracer().Inject(
+			span.Context(),
+			opentracing.HTTPHeaders,
+			opentracing.HTTPHeadersCarrier(req.Header),
+		)
 		if err != nil {
 			return err
 		}

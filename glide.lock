@@ -1,5 +1,5 @@
-hash: 77f25154aedfa407df78dfee253ba73dd2c7efaaaf63abcb20cefd4d16d05c4a
-updated: 2019-07-10T16:08:05.181813755-04:00
+hash: 3d8bbb669c8f81efc233c7e2879443b7d3a12e51f235c5e5f10faa3225da3f25
+updated: 2019-08-05T13:28:15.709449+05:30
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -849,7 +849,7 @@ imports:
   - go-selinux
   - go-selinux/label
 - name: github.com/openshift/api
-  version: 81d064c11ff2d62705dbb09ed9ac200ef9557716
+  version: 9ea19f9dd57858bb3fd8ec7051a99ca5e1ae88d6
   subpackages:
   - apps
   - apps/v1
@@ -1024,7 +1024,7 @@ imports:
   - user/informers/externalversions/user/v1
   - user/listers/user/v1
 - name: github.com/openshift/library-go
-  version: 2467051efd29fec85731629f925b82f3c477db30
+  version: 5f000a7152e9e0b438c0cb8ab4dab263f07b580e
   subpackages:
   - pkg/assets
   - pkg/assets/create
@@ -1058,6 +1058,11 @@ imports:
   - pkg/util/glog
   - pkg/util/status
   - pkg/util/user
+- name: github.com/opentracing/opentracing-go
+  version: 135aa78c6f95b4a199daf2f0470d231136cbbd0c
+  subpackages:
+  - ext
+  - log
 - name: github.com/pborman/uuid
   version: 8b1b92947f46224e3b97bb1a3a5b0382be00d31e
 - name: github.com/pelletier/go-toml
@@ -1129,6 +1134,8 @@ imports:
   - strategy
 - name: github.com/robfig/cron
   version: df38d32658d8788cd446ba74db4bb5375c4b0cb3
+- name: github.com/rootavish/tracing
+  version: 7f12097f5a8ba0aee72efad289deb0a81dd599ce
 - name: github.com/rubiojr/go-vhd
   version: 0bfd3b39853cdde5762efda92289f14b0ac0491b
   subpackages:
@@ -1184,6 +1191,29 @@ imports:
   version: 89b8d40f7ca833297db804fcb3be53a76d01c238
   subpackages:
   - wsproxy
+- name: github.com/uber/jaeger-client-go
+  version: e895c7a19f047619c4f79fad2c9eba3a3718d325
+  subpackages:
+  - config
+  - internal/baggage
+  - internal/baggage/remote
+  - internal/spanlog
+  - internal/throttler
+  - internal/throttler/remote
+  - log
+  - rpcmetrics
+  - thrift
+  - thrift-gen/agent
+  - thrift-gen/baggage
+  - thrift-gen/jaeger
+  - thrift-gen/sampling
+  - thrift-gen/zipkincore
+  - transport
+  - utils
+- name: github.com/uber/jaeger-lib
+  version: 0e30338a695636fe5bcf7301e8030ce8dd2a8530
+  subpackages:
+  - metrics
 - name: github.com/ugorji/go
   version: bdcc60b419d136a85cdf2e7cbcac34b3f1cd6e57
   subpackages:
@@ -1458,7 +1488,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 - name: k8s.io/api
-  version: 91a629a47dd4b8816f5d974f41ae0335b6468ec1
+  version: b18e97b54e4005d2ff259a96a0b5d06f11779b9d
   repo: https://github.com/openshift/kubernetes-api.git
   subpackages:
   - admission/v1beta1
@@ -1743,8 +1773,8 @@ imports:
   - pkg/genericclioptions/printers
   - pkg/genericclioptions/resource
 - name: k8s.io/client-go
-  version: e7e9d19af44cca1c3aacd92448ed662ce65d5312
-  repo: https://github.com/openshift/kubernetes-client-go.git
+  version: 88e7a50bcc976075487b4ea3e6f9289e85035122
+  repo: https://github.com/rootavish/kubernetes-client-go.git
   subpackages:
   - discovery
   - discovery/cached
@@ -2040,7 +2070,7 @@ imports:
   subpackages:
   - config/v1beta1
 - name: k8s.io/kubernetes
-  version: cc2afe3181bd5593ad5c03e9a768e3ff270ec343
+  version: f27555ff6d61016afe49f3c5e522e22d8cdc001a
   repo: https://github.com/openshift/kubernetes.git
   subpackages:
   - cmd/cloud-controller-manager/app/apis/config
