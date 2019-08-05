@@ -1,0 +1,3 @@
+[submodule "vendor/github.com/rootavish/tracing"]
+    path = vendor/github.com/rootavish/tracing
+    url = https://github.com/rootavish/tracing
